@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FTC Sign In Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --paper:#EFEFEA; --sheet:#F2F2EE; --cell:#F4F4F1; --cellline:#D9D9D3;
+  --ink:#545454; --ink-2:#3F3F3F; --soft:#7C7C78; --rule:#B9B9B3; --white:#FFFFFF;
+  --font:"Open Sans", "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{margin:0}
+body{
+  font-family:var(--font); color:var(--ink); background:var(--paper);
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+/* paper grain */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9 .35' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55  0 0 0 0 .55  0 0 0 0 .52  0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.sheet{position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:44px 40px 28px}
+
+h1{
+  margin:0; text-align:center; font-weight:800; letter-spacing:.01em;
+  font-size:clamp(34px,5.4vw,58px); line-height:1; color:var(--ink); text-transform:uppercase;
+}
+.meta{display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; margin:34px 30px 22px; font-size:clamp(16px,1.9vw,20px); color:var(--ink-2)}
+.meta b{font-weight:400}
+.meta span{font-weight:600}
+
+table{width:100%; border-collapse:separate; border-spacing:6px; table-layout:fixed}
+col.no{width:7%} col.first{width:18%} col.last{width:18%} col.tin{width:12%} col.tout{width:14%} col.work{width:31%}
+th{
+  background:var(--ink); color:var(--white); font-weight:700; font-size:clamp(13px,1.5vw,17px);
+  padding:16px 8px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+td{
+  background:var(--cell); border:1px solid var(--cellline); height:44px; padding:0 10px;
+  font-size:clamp(14px,1.55vw,17px); color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+td.c{text-align:center}
+td.num{text-align:center; color:var(--soft); font-weight:600}
+td.dim{color:var(--soft); font-style:italic}
+tr.here td{background:#FAFAF7}
+
+/* the "next blank line" you write on */
+tr.entry td{background:var(--white); border-color:var(--rule); padding:0}
+tr.entry td.num{font-size:22px; font-weight:800; color:var(--ink)}
+tr.entry input{
+  width:100%; height:44px; border:0; background:transparent; padding:0 12px;
+  font:600 clamp(15px,1.6vw,18px) var(--font); color:var(--ink-2); outline:none;
+}
+tr.entry input::placeholder{color:#A7A7A2; font-weight:400}
+tr.entry input:focus{box-shadow:inset 0 -3px 0 var(--ink)}
+tr.entry td.hint{font-size:14px; color:var(--soft); text-align:center; padding:0 6px}
+
+.btn{
+  appearance:none; border:0; background:var(--ink); color:var(--white); cursor:pointer;
+  font:700 clamp(14px,1.5vw,16px) var(--font); width:100%; height:100%; min-height:44px;
+}
+.btn:hover{background:var(--ink-2)}
+.btn:focus-visible,.ghost:focus-visible,.chip:focus-visible,.linkish:focus-visible{outline:3px solid var(--ink-2); outline-offset:2px}
+.btn.small{height:34px; min-height:34px; width:auto; padding:0 14px}
+td.act{padding:4px}
+.ghost{
+  appearance:none; background:transparent; border:1.5px solid var(--ink); color:var(--ink); cursor:pointer;
+  font:700 14px var(--font); height:34px; width:100%;
+}
+.ghost:hover{background:var(--ink); color:var(--white)}
+.x{appearance:none; border:0; background:none; color:#B0463A; font:700 18px var(--font); cursor:pointer; padding:0 4px}
+
+.lines{margin:34px 6px 0}
+.lines div{border-bottom:1px solid var(--rule); height:44px; display:flex; align-items:flex-end; padding:0 4px 8px; font-size:16px; color:var(--ink-2)}
+.lines strong{font-weight:800; margin:0 6px}
+footer{margin-top:28px; text-align:center; font-weight:700; font-size:14px; letter-spacing:.02em; color:var(--ink-2)}
+.linkish{appearance:none; background:none; border:0; font:inherit; color:inherit; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+
+/* sign-out + staff sheets */
+.veil{position:fixed; inset:0; background:rgba(60,60,58,.42); display:none; align-items:center; justify-content:center; z-index:20; padding:20px}
+.veil.open{display:flex}
+.modal{background:var(--sheet); width:min(620px,100%); max-height:92vh; overflow:auto; box-shadow:0 20px 60px rgba(40,40,38,.25)}
+.modal header{background:var(--ink); color:var(--white); padding:18px 24px; font-weight:800; font-size:22px; text-transform:uppercase; letter-spacing:.02em}
+.modal .body{padding:22px 24px 24px}
+.modal p{margin:0 0 16px; font-size:17px; color:var(--ink-2)}
+.chips{display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:8px; margin-bottom:18px}
+.chip{appearance:none; background:var(--cell); border:1px solid var(--cellline); color:var(--ink-2); height:52px; font:600 16px var(--font); cursor:pointer; text-align:left; padding:0 14px}
+.chip[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--white)}
+label.f{display:block; font-size:15px; font-weight:600; margin:0 0 6px; color:var(--ink-2)}
+textarea,.modal input{width:100%; border:1px solid var(--rule); background:var(--white); font:16px var(--font); color:var(--ink-2); padding:10px 12px; outline:none}
+textarea{min-height:76px; resize:vertical}
+textarea:focus,.modal input:focus{border-color:var(--ink)}
+.row{display:flex; gap:10px; margin-top:18px}
+.row .btn,.row .ghost{height:48px}
+.err{color:#B0463A; font-size:14px; min-height:20px; margin-top:8px}
+.range{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+
+.toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(20px); opacity:0; background:var(--ink); color:var(--white); padding:14px 22px; font-weight:600; font-size:16px; transition:opacity .25s, transform .25s; z-index:30; pointer-events:none; max-width:90vw; text-align:center}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+.offline{display:none; text-align:center; font-size:14px; color:#B0463A; margin-top:10px}
+.offline.show{display:block}
+
+@media (max-width:700px){
+  .sheet{padding:28px 10px 20px}
+  .meta{margin:24px 8px 14px}
+  table{border-spacing:3px}
+  col.no{width:0} th.no,td.num{display:none}
+  col.first{width:22%} col.last{width:22%} col.tin{width:16%} col.tout{width:17%} col.work{width:23%}
+  th{padding:12px 4px; font-size:12px} td{padding:0 6px; font-size:13px}
+}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<main class="sheet">
+  <h1>FTC Sign In Sheet</h1>
+  <div class="meta">
+    <div><b>Program:</b> <span>FTC Robotics</span></div>
+    <div><b>Date:</b> <span id="today"></span></div>
+  </div>
+
+  <table aria-label="Today's FTC sign-ins">
+    <colgroup><col class="no"><col class="first"><col class="last"><col class="tin"><col class="tout"><col class="work"></colgroup>
+    <thead><tr>
+      <th class="no">No</th><th>First Name</th><th>Last Name</th><th>Time In</th><th>Time Out</th><th>What We Worked On</th>
+    </tr></thead>
+    <tbody id="rows">
+      <tr class="entry" id="entry">
+        <td class="num">+</td>
+        <td><input id="first" autocomplete="off" autocapitalize="words" placeholder="First name" aria-label="First name"></td>
+        <td><input id="last" autocomplete="off" autocapitalize="words" placeholder="Last name" aria-label="Last name"></td>
+        <td class="hint" id="nowtime"></td>
+        <td class="act" colspan="2"><button class="btn" id="signin">Sign in</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="offline" id="offline">Can't reach the sheet right now. Check the Wi-Fi, then try again.</div>
+
+  <div class="lines">
+    <div>Here right now: <strong id="herenow">0</strong></div>
+    <div>Signed in today: <strong id="totaltoday">0</strong></div>
+    <div></div>
+  </div>
+
+  <footer>Kings Highway Teen Tech Center &nbsp;|&nbsp; FTC Robotics &nbsp;|&nbsp; <button class="linkish" id="staffbtn">Staff</button></footer>
+</main>
+
+<!-- sign out -->
+<div class="veil" id="outVeil" role="dialog" aria-modal="true" aria-labelledby="outTitle">
+  <div class="modal">
+    <header id="outTitle">Sign out</header>
+    <div class="body">
+      <p id="outWho"></p>
+      <p style="font-weight:700">What did you work on today? Pick all that apply.</p>
+      <div class="chips" id="chips"></div>
+      <label class="f" for="notes">Anything specific? (optional)</label>
+      <textarea id="notes" placeholder="e.g. mounted the intake, fixed the arm code"></textarea>
+      <div class="err" id="outErr"></div>
+      <div class="row">
+        <button class="ghost" id="outCancel">Cancel</button>
+        <button class="btn" id="outSave">Sign out</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- staff -->
+<div class="veil" id="staffVeil" role="dialog" aria-modal="true" aria-labelledby="staffTitle">
+  <div class="modal">
+    <header id="staffTitle">Staff</header>
+    <div class="body">
+      <div id="pinStep">
+        <label class="f" for="pin">Staff PIN</label>
+        <input id="pin" type="password" inputmode="numeric" autocomplete="off">
+        <div class="err" id="pinErr"></div>
+        <div class="row"><button class="ghost" id="staffClose1">Close</button><button class="btn" id="pinGo">Unlock</button></div>
+      </div>
+      <div id="staffStep" hidden>
+        <p>Download attendance as an Excel file.</p>
+        <div class="range">
+          <div><label class="f" for="from">From</label><input id="from" type="date"></div>
+          <div><label class="f" for="to">To</label><input id="to" type="date"></div>
+        </div>
+        <div class="err" id="expErr"></div>
+        <div class="row"><button class="btn" id="export">Download Excel</button></div>
+        <p style="margin-top:22px; font-size:15px">Staff mode is on: today's rows now show a remove button for mistakes. It turns off when you close this.</p>
+        <div class="row"><button class="ghost" id="staffClose2">Close</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+const SB  = 'https://ieieslzgxmdmflykuafl.supabase.co/rest/v1/ftc_visits';
+const KEY = 'sb_publishable_lHWcaI3grlK7S3XDESF9JA_QOLFfUg7';
+const PIN = '2026';
+const MIN_ROWS = 14;
+const WORK = ['Building','Coding','CAD / Design','Drive practice','Engineering notebook','Strategy / Planning','Outreach','Other'];
+
+const $ = id => document.getElementById(id);
+const state = { rows: [], sig: '', staff: false, outId: null };
+
+const pad = n => String(n).padStart(2,'0');
+const localDate = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const localTime = (d=new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const pretty = t => { if(!t) return ''; let [h,m]=t.split(':').map(Number); const ap=h>=12?'PM':'AM'; h=h%12||12; return `${h}:${pad(m)} ${ap}`; };
+const tidy = s => s.trim().replace(/\s+/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mins = (a,b) => { if(!a||!b) return null; const [h1,m1]=a.split(':').map(Number),[h2,m2]=b.split(':').map(Number); const d=(h2*60+m2)-(h1*60+m1); return d>=0?d:null; };
+
+async function api(method, query='', body){
+  const r = await fetch(SB+query, {
+    method,
+    headers: { apikey: KEY, 'Content-Type':'application/json', Prefer:'return=representation' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if(!r.ok) throw new Error(await r.text());
+  const txt = await r.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function tick(){
+  $('today').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  $('nowtime').textContent = pretty(localTime());
+}
+
+function render(force){
+  const sig = JSON.stringify(state.rows)+state.staff;
+  if(!force && sig===state.sig) return;
+  state.sig = sig;
+  const body = $('rows'), entry = $('entry');
+  [...body.children].forEach(tr => { if(tr!==entry) tr.remove(); });
+
+  state.rows.forEach((r,i) => {
+    const tr = document.createElement('tr');
+    const open = !r.time_out;
+    if(open) tr.className='here';
+    tr.innerHTML = `
+      <td class="num">${i+1}</td>
+      <td>${esc(r.first_name)}</td>
+      <td>${esc(r.last_name)}</td>
+      <td class="c">${pretty(r.time_in)}</td>
+      <td class="${open?'act':'c'}">${open ? `<button class="ghost" data-out="${r.id}">Sign out</button>` : pretty(r.time_out)}</td>
+      <td class="${r.worked_on&&r.worked_on.length?'':'dim'}" title="${esc([ (r.worked_on||[]).join(', '), r.notes ].filter(Boolean).join(' — '))}">
+        ${state.staff?`<button class="x" data-del="${r.id}" aria-label="Remove ${esc(r.first_name)}'s row">×</button>`:''}
+        ${r.worked_on&&r.worked_on.length ? esc(r.worked_on.join(', ')) : (open?'Still here':'')}
+      </td>`;
+    body.insertBefore(tr, entry);
+  });
+
+  const empties = Math.max(3, MIN_ROWS - state.rows.length - 1);
+  for(let k=0;k<empties;k++){
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="num"></td><td></td><td></td><td></td><td></td><td></td>';
+    body.appendChild(tr);
+  }
+  $('herenow').textContent = state.rows.filter(r=>!r.time_out).length;
+  $('totaltoday').textContent = state.rows.length;
+}
+
+async function load(){
+  try{
+    state.rows = await api('GET', `?date=eq.${localDate()}&order=created_at.asc`) || [];
+    $('offline').classList.remove('show');
+    render();
+  }catch(e){ $('offline').classList.add('show'); }
+}
+
+async function closeOutOldDays(){
+  try{ await api('PATCH', `?date=lt.${localDate()}&time_out=is.null&auto_signed_out=is.false`, { auto_signed_out:true }); }catch(e){}
+}
+
+/* sign in */
+async function signIn(){
+  const first = tidy($('first').value), last = tidy($('last').value);
+  if(!first || !last){ toast('Write your first and last name.'); (first?$('last'):$('first')).focus(); return; }
+  const dup = state.rows.find(r => !r.time_out && r.first_name.toLowerCase()===first.toLowerCase() && r.last_name.toLowerCase()===last.toLowerCase());
+  if(dup){ toast(`${first}, you're already signed in.`); return; }
+  $('signin').disabled = true;
+  try{
+    const [row] = await api('POST','', { first_name:first, last_name:last, date:localDate(), time_in:localTime() });
+    state.rows.push(row); render(true);
+    $('first').value=''; $('last').value='';
+    toast(`Welcome in, ${first}.`);
+  }catch(e){ toast("Couldn't sign in. Check the Wi-Fi and try again."); }
+  $('signin').disabled = false;
+}
+$('signin').addEventListener('click', signIn);
+$('last').addEventListener('keydown', e => { if(e.key==='Enter') signIn(); });
+$('first').addEventListener('keydown', e => { if(e.key==='Enter') $('last').focus(); });
+
+/* chips */
+$('chips').innerHTML = WORK.map(w=>`<button class="chip" type="button" aria-pressed="false">${w}</button>`).join('');
+$('chips').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if(!c) return;
+  c.setAttribute('aria-pressed', c.getAttribute('aria-pressed')==='true'?'false':'true');
+});
+
+/* sign out + staff remove */
+$('rows').addEventListener('click', async e => {
+  const out = e.target.closest('[data-out]');
+  if(out){
+    const r = state.rows.find(x=>x.id===out.dataset.out); if(!r) return;
+    state.outId = r.id;
+    $('outWho').textContent = `${r.first_name} ${r.last_name}, signed in at ${pretty(r.time_in)}.`;
+    $('chips').querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+    $('notes').value=''; $('outErr').textContent='';
+    $('outVeil').classList.add('open');
+    $('chips').querySelector('.chip').focus();
+    return;
+  }
+  const del = e.target.closest('[data-del]');
+  if(del && state.staff){
+    const r = state.rows.find(x=>x.id===del.dataset.del);
+    if(!r || !confirm(`Remove ${r.first_name} ${r.last_name}'s row? This can't be undone.`)) return;
+    try{ await api('DELETE', `?id=eq.${r.id}`); state.rows = state.rows.filter(x=>x.id!==r.id); render(true); toast('Row removed.'); }
+    catch(err){ toast("Couldn't remove that row."); }
+  }
+});
+$('outCancel').addEventListener('click', ()=> $('outVeil').classList.remove('open'));
+$('outSave').addEventListener('click', async () => {
+  const picked = [...$('chips').querySelectorAll('.chip[aria-pressed="true"]')].map(c=>c.textContent);
+  if(!picked.length){ $('outErr').textContent='Pick at least one thing you worked on.'; return; }
+  $('outSave').disabled = true;
+  try{
+    const [row] = await api('PATCH', `?id=eq.${state.outId}`, {
+      time_out: localTime(), signed_out_at: new Date().toISOString(),
+      worked_on: picked, notes: $('notes').value.trim() || null
+    });
+    state.rows = state.rows.map(r => r.id===row.id ? row : r); render(true);
+    $('outVeil').classList.remove('open');
+    toast(`See you next time, ${row.first_name}.`);
+  }catch(e){ $('outErr').textContent="Couldn't sign out. Check the Wi-Fi and try again."; }
+  $('outSave').disabled = false;
+});
+
+/* staff */
+function openStaff(){
+  $('pin').value=''; $('pinErr').textContent=''; $('expErr').textContent='';
+  $('pinStep').hidden = state.staff; $('staffStep').hidden = !state.staff;
+  const t = localDate(), d = new Date(); d.setDate(d.getDate()-30);
+  if(!$('from').value) $('from').value = localDate(d);
+  if(!$('to').value) $('to').value = t;
+  $('staffVeil').classList.add('open');
+  (state.staff?$('export'):$('pin')).focus();
+}
+function closeStaff(){ $('staffVeil').classList.remove('open'); state.staff=false; render(true); }
+$('staffbtn').addEventListener('click', openStaff);
+$('staffClose1').addEventListener('click', closeStaff);
+$('staffClose2').addEventListener('click', closeStaff);
+function unlock(){
+  if($('pin').value!==PIN){ $('pinErr').textContent='That PIN is incorrect.'; return; }
+  state.staff=true; render(true);
+  $('pinStep').hidden=true; $('staffStep').hidden=false; $('export').focus();
+}
+$('pinGo').addEventListener('click', unlock);
+$('pin').addEventListener('keydown', e=>{ if(e.key==='Enter') unlock(); });
+
+$('export').addEventListener('click', async () => {
+  const a=$('from').value, b=$('to').value;
+  if(!a||!b||a>b){ $('expErr').textContent='Pick a start date that comes before the end date.'; return; }
+  if(typeof XLSX==='undefined'){ $('expErr').textContent='The Excel tool didn\'t load. Refresh the page and try again.'; return; }
+  $('expErr').textContent='';
+  try{
+    const rows = await api('GET', `?date=gte.${a}&date=lte.${b}&order=date.asc,created_at.asc`) || [];
+    if(!rows.length){ $('expErr').textContent='No sign-ins in that date range.'; return; }
+
+    const sessions = rows.map(r => {
+      const m = mins(r.time_in, r.time_out);
+      return {
+        'Date': r.date, 'First Name': r.first_name, 'Last Name': r.last_name,
+        'Time In': pretty(r.time_in),
+        'Time Out': r.time_out ? pretty(r.time_out) : (r.auto_signed_out ? 'Forgot to sign out' : 'Still signed in'),
+        'Hours': m==null ? '' : Math.round(m/60*100)/100,
+        'What We Worked On': (r.worked_on||[]).join(', '),
+        'Notes': r.notes || ''
+      };
+    });
+
+    const people = {};
+    rows.forEach(r => {
+      const k = `${r.first_name.toLowerCase()}|${r.last_name.toLowerCase()}`;
+      const p = people[k] ||= { 'First Name':r.first_name, 'Last Name':r.last_name, 'Visits':0, 'Total Hours':0, 'First Visit':r.date, 'Last Visit':r.date, _dates:new Set() };
+      p._dates.add(r.date); p.Visits = p._dates.size;
+      const m = mins(r.time_in, r.time_out); if(m!=null) p['Total Hours'] = Math.round((p['Total Hours'] + m/60)*100)/100;
+      if(r.date < p['First Visit']) p['First Visit']=r.date;
+      if(r.date > p['Last Visit']) p['Last Visit']=r.date;
+    });
+    const summary = Object.values(people).map(({_dates,...p})=>p).sort((x,y)=>y.Visits-x.Visits || x['Last Name'].localeCompare(y['Last Name']));
+
+    const byDay = {};
+    rows.forEach(r => {
+      const d = byDay[r.date] ||= { 'Date':r.date, 'Teens':new Set(), 'Building':0, 'Coding':0 };
+      d.Teens.add(`${r.first_name.toLowerCase()}|${r.last_name.toLowerCase()}`);
+      (r.worked_on||[]).forEach(w => { if(w==='Building') d.Building++; if(w==='Coding') d.Coding++; });
+    });
+    const daily = Object.values(byDay).map(d => ({ 'Date':d.Date, 'Teens':d.Teens.size, 'Worked on building':d.Building, 'Worked on coding':d.Coding }));
+
+    const wb = XLSX.utils.book_new();
+    const add = (data, name, widths) => { const ws = XLSX.utils.json_to_sheet(data); ws['!cols'] = widths.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, ws, name); };
+    add(summary, 'Summary', [14,16,8,12,12,12]);
+    add(sessions, 'Sessions', [12,14,16,10,18,8,40,40]);
+    add(daily, 'By Day', [12,8,18,16]);
+    XLSX.writeFile(wb, `FTC_attendance_${a}_to_${b}.xlsx`);
+    toast('Excel file downloaded.');
+  }catch(e){ $('expErr').textContent="Couldn't pull attendance. Check the Wi-Fi and try again."; }
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key!=='Escape') return;
+  if($('outVeil').classList.contains('open')) $('outVeil').classList.remove('open');
+  else if($('staffVeil').classList.contains('open')) closeStaff();
+});
+
+/* start */
+tick(); setInterval(tick, 15000);
+render(true);
+closeOutOldDays().then(load);
+setInterval(() => { if(!document.hidden) load(); }, 8000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+</script>
+</body>
+</html>
