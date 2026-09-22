@@ -190,8 +190,8 @@ textarea:focus,.modal input:focus{border-color:var(--ink)}
         </div>
         <div class="err" id="expErr"></div>
         <div class="row"><button class="btn" id="export">Download Excel</button></div>
-        <p style="margin-top:22px; font-size:15px">Staff mode is on: today's rows now show a remove button for mistakes. It turns off when you close this.</p>
-        <div class="row"><button class="ghost" id="staffClose2">Close</button></div>
+        <p style="margin-top:22px; font-size:15px">Staff mode is on. Every row on the sheet now has a × to remove a mistaken entry — close this window and tap it. Staff mode stays on until you turn it off below, even after you close this window.</p>
+        <div class="row"><button class="ghost" id="staffOff">Turn off staff mode</button><button class="ghost" id="staffClose2">Close</button></div>
       </div>
     </div>
   </div>
@@ -350,26 +350,39 @@ $('outSave').addEventListener('click', async () => {
 });
 
 /* staff */
+function updateStaffLabel(){ $('staffbtn').textContent = state.staff ? 'Staff mode on' : 'Staff'; }
 function openStaff(){
-  $('pin').value=''; $('pinErr').textContent=''; $('expErr').textContent='';
-  $('pinStep').hidden = state.staff; $('staffStep').hidden = !state.staff;
+  $('pinErr').textContent=''; $('expErr').textContent='';
+  if(state.staff){
+    $('pinStep').hidden = true; $('staffStep').hidden = false;
+  } else {
+    $('pin').value=''; $('pinStep').hidden = false; $('staffStep').hidden = true;
+  }
   const t = localDate(), d = new Date(); d.setDate(d.getDate()-30);
   if(!$('from').value) $('from').value = localDate(d);
   if(!$('to').value) $('to').value = t;
   $('staffVeil').classList.add('open');
   (state.staff?$('export'):$('pin')).focus();
 }
-function closeStaff(){ $('staffVeil').classList.remove('open'); state.staff=false; render(true); }
+/* just hides the popup, doesn't change whether staff mode is on */
+function closeStaffModal(){ $('staffVeil').classList.remove('open'); }
 $('staffbtn').addEventListener('click', openStaff);
-$('staffClose1').addEventListener('click', closeStaff);
-$('staffClose2').addEventListener('click', closeStaff);
+$('staffClose1').addEventListener('click', closeStaffModal);
+$('staffClose2').addEventListener('click', closeStaffModal);
 function unlock(){
   if($('pin').value!==PIN){ $('pinErr').textContent='That PIN is incorrect.'; return; }
-  state.staff=true; render(true);
-  $('pinStep').hidden=true; $('staffStep').hidden=false; $('export').focus();
+  state.staff=true; render(true); updateStaffLabel();
+  $('staffVeil').classList.remove('open');
+  toast('Staff mode is on. Tap the × next to a name to remove that row.');
+}
+function turnOffStaff(){
+  state.staff=false; render(true); updateStaffLabel();
+  $('staffVeil').classList.remove('open');
+  toast('Staff mode is off.');
 }
 $('pinGo').addEventListener('click', unlock);
 $('pin').addEventListener('keydown', e=>{ if(e.key==='Enter') unlock(); });
+$('staffOff').addEventListener('click', turnOffStaff);
 
 $('export').addEventListener('click', async () => {
   const a=$('from').value, b=$('to').value;
@@ -429,6 +442,7 @@ document.addEventListener('keydown', e => {
 
 /* start */
 tick(); setInterval(tick, 15000);
+updateStaffLabel();
 render(true);
 closeOutOldDays().then(load);
 setInterval(() => { if(!document.hidden) load(); }, 8000);
